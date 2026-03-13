@@ -6,37 +6,27 @@ export async function initUserContext(
 ): Promise<UserContext> {
   const client = new WebClient(userToken);
 
-  // ユーザーIDを取得
+  // ユーザーIDと表示名を並列取得
   const authResult = await client.auth.test();
   const userId = authResult.user_id!;
 
-  // 表示名・本名を取得
-  const userInfo = await client.users.info({ user: userId });
+  const [userInfo, groupsResult] = await Promise.all([
+    client.users.info({ user: userId }),
+    client.usergroups.list({ include_users: true }).catch(() => null),
+  ]);
+
   const profile = userInfo.user?.profile;
   const displayName = profile?.display_name || "";
   const realName = profile?.real_name || "";
 
-  // 所属ユーザーグループを取得
+  // include_users: true で各グループのusersが含まれるため、1回で済む
   const userGroupIds: string[] = [];
-  try {
-    const groupsResult = await client.usergroups.list();
-    const allGroups = groupsResult.usergroups || [];
-
-    for (const group of allGroups) {
-      if (!group.id) continue;
-      try {
-        const membersResult = await client.usergroups.users.list({
-          usergroup: group.id,
-        });
-        if (membersResult.users?.includes(userId)) {
-          userGroupIds.push(group.id);
-        }
-      } catch {
-        // グループメンバー取得に失敗した場合はスキップ
+  if (groupsResult?.usergroups) {
+    for (const group of groupsResult.usergroups) {
+      if (group.id && group.users?.includes(userId)) {
+        userGroupIds.push(group.id);
       }
     }
-  } catch {
-    console.warn("ユーザーグループの取得に失敗しました。グループメンション検出は無効になります。");
   }
 
   console.log(
