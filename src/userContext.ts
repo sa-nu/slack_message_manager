@@ -29,9 +29,15 @@ export async function initUserContext(
     }
   }
 
+  // 環境変数からカスタムキーワードを取得（カンマ区切り）
+  const keywords = (process.env.SLACK_KEYWORDS || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0);
+
   console.log(
-    `UserContext初期化完了: userId=${userId}, displayName=${displayName}, realName=${realName}, userGroups=${userGroupIds.length}件`
+    `UserContext初期化完了: userId=${userId}, displayName=${displayName}, realName=${realName}, userGroups=${userGroupIds.length}件, keywords=${keywords.length}件`
   );
 
-  return { userId, displayName, realName, userGroupIds };
+  return { userId, displayName, realName, userGroupIds, keywords };
 }

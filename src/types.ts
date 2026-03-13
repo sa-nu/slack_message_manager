@@ -3,6 +3,7 @@ export interface UserContext {
   displayName: string;
   realName: string;
   userGroupIds: string[];
+  keywords: string[];
 }
 
 export interface MentionCheckResult {
@@ -13,5 +14,6 @@ export interface MentionCheckResult {
     | "here"
     | "usergroup"
     | "display_name"
-    | "real_name";
+    | "real_name"
+    | "keyword";
 }

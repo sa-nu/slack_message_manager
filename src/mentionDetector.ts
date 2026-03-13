@@ -48,6 +48,15 @@ export function isMentioned(
     }
   }
 
+  // 6. カスタムキーワード
+  for (const keyword of userContext.keywords) {
+    if (keyword.length < 2) continue;
+    const pattern = new RegExp(escapeRegExp(keyword), "i");
+    if (pattern.test(text)) {
+      return { isMentioned: true, reason: "keyword" };
+    }
+  }
+
   return { isMentioned: false };
 }
 
