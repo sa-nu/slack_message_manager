@@ -1,48 +1,8 @@
 import "dotenv/config";
-import { App, LogLevel } from "@slack/bolt";
-import { VercelReceiver, createHandler } from "@vercel/slack-bolt";
-import { validateEnv } from "../../src/config.js";
-import { initUserContext } from "../../src/userContext.js";
-import { initUserClient } from "../../src/slackUserClient.js";
-import { createMessageHandler } from "../../src/messageHandler.js";
 
-const config = validateEnv();
-
-const receiver = new VercelReceiver({
-  signingSecret: config.signingSecret,
-});
-
-const app = new App({
-  token: config.botToken,
-  receiver,
-  deferInitialization: true,
-  logLevel: LogLevel.INFO,
-});
-
-// UserContextをキャッシュ（サーバーレスのコールドスタート間で再利用）
-let userContextPromise: ReturnType<typeof initUserContext> | null = null;
-
-function getUserContext() {
-  if (!userContextPromise) {
-    userContextPromise = initUserContext(config.userToken);
-  }
-  return userContextPromise;
-}
-
-// ユーザートークンクライアントを初期化
-initUserClient(config.userToken);
-
-app.event("message", async (args) => {
-  const userContext = await getUserContext();
-  const handler = createMessageHandler(userContext);
-  await handler(args as any);
-});
-
-const boltHandler = createHandler(app, receiver);
-
-// Slack URL verification challenge にも対応
+// Slack URL verification challenge を最優先で処理
+// 環境変数エラーやBolt初期化エラーがあってもchallengeには応答する
 export const POST = async (req: Request) => {
-  // challenge リクエストを先に処理
   try {
     const cloned = req.clone();
     const body = await cloned.json();
@@ -53,8 +13,71 @@ export const POST = async (req: Request) => {
       });
     }
   } catch {
-    // JSONパース失敗時はBoltに任せる
+    // JSONパース失敗時は下のBoltハンドラに任せる
   }
 
-  return boltHandler(req);
+  // challenge以外のイベントはBoltで処理
+  try {
+    const handler = await getBoltHandler();
+    return handler(req);
+  } catch (error) {
+    console.error("Boltハンドラの初期化に失敗:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: { "content-type": "application/json" } }
+    );
+  }
 };
+
+// Bolt関連の初期化を遅延実行（challengeをブロックしないため）
+let boltHandlerPromise: Promise<(req: Request) => Promise<Response>> | null =
+  null;
+
+function getBoltHandler() {
+  if (!boltHandlerPromise) {
+    boltHandlerPromise = initBolt();
+  }
+  return boltHandlerPromise;
+}
+
+async function initBolt() {
+  const { App, LogLevel } = await import("@slack/bolt");
+  const { VercelReceiver, createHandler } = await import("@vercel/slack-bolt");
+  const { validateEnv } = await import("../../src/config.js");
+  const { initUserContext } = await import("../../src/userContext.js");
+  const { initUserClient } = await import("../../src/slackUserClient.js");
+  const { createMessageHandler } = await import(
+    "../../src/messageHandler.js"
+  );
+
+  const config = validateEnv();
+
+  const receiver = new VercelReceiver({
+    signingSecret: config.signingSecret,
+  });
+
+  const app = new App({
+    token: config.botToken,
+    receiver,
+    deferInitialization: true,
+    logLevel: LogLevel.INFO,
+  });
+
+  initUserClient(config.userToken);
+
+  let userContextPromise: ReturnType<typeof initUserContext> | null = null;
+  function getUserContext() {
+    if (!userContextPromise) {
+      userContextPromise = initUserContext(config.userToken);
+    }
+    return userContextPromise;
+  }
+
+  app.event("message", async (args) => {
+    const userContext = await getUserContext();
+    const handler = createMessageHandler(userContext);
+    await handler(args as any);
+  });
+
+  return createHandler(app, receiver);
+}
