@@ -5,6 +5,7 @@ import { markAsRead } from "./slackUserClient.js";
 interface MessageEvent {
   channel: string;
   ts: string;
+  thread_ts?: string;
   text?: string;
   user?: string;
   subtype?: string;
@@ -40,6 +41,12 @@ export function createMessageHandler(userContext: UserContext) {
     // サブタイプがスキップ対象ならスキップ
     if (message.subtype && SKIP_SUBTYPES.has(message.subtype)) {
       console.log(`スキップ(subtype=${message.subtype})`);
+      return;
+    }
+
+    // スレッド返信はスキップ（conversations.markでは既読化できないため）
+    if (message.thread_ts) {
+      console.log(`スキップ(スレッド返信)`);
       return;
     }
 
