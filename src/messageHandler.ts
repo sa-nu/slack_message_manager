@@ -1,6 +1,6 @@
 import type { UserContext } from "./types.js";
 import { isMentioned } from "./mentionDetector.js";
-import { markAsRead, saveMessage } from "./slackUserClient.js";
+import { markAsRead } from "./slackUserClient.js";
 
 interface MessageEvent {
   channel: string;
@@ -53,11 +53,12 @@ export function createMessageHandler(userContext: UserContext) {
     const result = isMentioned(text || "", userContext);
 
     if (result.isMentioned) {
+      // メンション対象 → アクティビティに残す（何もしない）
       console.log(
         `メンション検出 [${result.reason}]: channel=${channel}, ts=${ts}`
       );
-      await saveMessage(channel, ts);
     } else {
+      // メンション対象外 → 既読にしてアクティビティから消す
       await markAsRead(channel, ts);
     }
   };

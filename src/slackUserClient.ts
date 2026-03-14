@@ -24,14 +24,14 @@ export async function saveMessage(
   ts: string
 ): Promise<void> {
   try {
-    await client.stars.add({ channel, timestamp: ts });
-    console.log(`保存成功: channel=${channel}, ts=${ts}`);
+    const result = await client.stars.add({ channel, timestamp: ts });
+    console.log(`後で追加成功: channel=${channel}, ts=${ts}, ok=${result.ok}`);
   } catch (error: any) {
     const code = error?.data?.error || "unknown";
     if (code === "already_starred") {
-      console.log(`保存済み（スキップ）: channel=${channel}, ts=${ts}`);
+      console.log(`後で追加済み（スキップ）: channel=${channel}, ts=${ts}`);
       return;
     }
-    console.error(`保存に失敗: channel=${channel}, ts=${ts} Error: ${code}`);
+    console.error(`後で追加に失敗: channel=${channel}, ts=${ts} Error: ${code}`);
   }
 }
