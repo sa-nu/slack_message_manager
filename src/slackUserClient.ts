@@ -13,11 +13,9 @@ export async function markAsRead(
   try {
     await client.conversations.mark({ channel, ts });
   } catch (error: any) {
-    if (error?.data?.error === "not_in_channel") {
-      // チャンネル未参加の場合は無視
-      return;
-    }
-    console.error(`既読化に失敗: channel=${channel}, ts=${ts}`, error);
+    const code = error?.data?.error || "unknown";
+    if (code === "not_in_channel") return;
+    console.error(`既読化に失敗: channel=${channel}, ts=${ts} Error: ${code}`);
   }
 }
 
@@ -27,11 +25,13 @@ export async function saveMessage(
 ): Promise<void> {
   try {
     await client.stars.add({ channel, timestamp: ts });
+    console.log(`保存成功: channel=${channel}, ts=${ts}`);
   } catch (error: any) {
-    if (error?.data?.error === "already_starred") {
-      // 既に保存済みの場合は無視（冪等）
+    const code = error?.data?.error || "unknown";
+    if (code === "already_starred") {
+      console.log(`保存済み（スキップ）: channel=${channel}, ts=${ts}`);
       return;
     }
-    console.error(`保存に失敗: channel=${channel}, ts=${ts}`, error);
+    console.error(`保存に失敗: channel=${channel}, ts=${ts} Error: ${code}`);
   }
 }
