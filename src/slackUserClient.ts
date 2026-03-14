@@ -12,6 +12,7 @@ export async function markAsRead(
 ): Promise<void> {
   try {
     await client.conversations.mark({ channel, ts });
+    console.log(`既読化成功: channel=${channel}, ts=${ts}`);
   } catch (error: any) {
     const code = error?.data?.error || "unknown";
     if (code === "not_in_channel") return;

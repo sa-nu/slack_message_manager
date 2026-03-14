@@ -33,13 +33,19 @@ const SKIP_SUBTYPES = new Set([
 
 export function createMessageHandler(userContext: UserContext) {
   return async ({ message }: { message: MessageEvent }) => {
+    console.log(
+      `イベント受信: channel=${message.channel}, ts=${message.ts}, subtype=${message.subtype}, bot_id=${message.bot_id}, user=${message.user}, text=${message.text?.substring(0, 50)}`
+    );
+
     // サブタイプがスキップ対象ならスキップ
     if (message.subtype && SKIP_SUBTYPES.has(message.subtype)) {
+      console.log(`スキップ(subtype=${message.subtype})`);
       return;
     }
 
     // ボットメッセージはスキップ
     if (message.bot_id) {
+      console.log(`スキップ(bot_id=${message.bot_id})`);
       return;
     }
 
@@ -47,6 +53,7 @@ export function createMessageHandler(userContext: UserContext) {
 
     // 自分自身のメッセージはスキップ
     if (userId === userContext.userId) {
+      console.log(`スキップ(自分自身)`);
       return;
     }
 
@@ -59,6 +66,7 @@ export function createMessageHandler(userContext: UserContext) {
       );
     } else {
       // メンション対象外 → 既読にしてアクティビティから消す
+      console.log(`既読化: channel=${channel}, ts=${ts}`);
       await markAsRead(channel, ts);
     }
   };
